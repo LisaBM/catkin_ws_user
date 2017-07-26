@@ -32,10 +32,10 @@ def callbackBackwardLongitudinal(request):
 #     pub_back.publish(0.10)
 
     rospy.sleep(10)
-    driving_direction_pub2.publish(0.30)
+    driving_direction_pub2.publish(0.2450)
 
     rospy.sleep(10)
-    pub_forward.publish(0.1)
+    pub_forward.publish(0.15)
 
     rospy.sleep(10)
     return ParkingManeuverResponse("FINISHED")

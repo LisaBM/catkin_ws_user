@@ -1,0 +1,6 @@
+<launch>
+<param name ="/use_sim_time" value="true"/>
+<node pkg="rosbag" type="play" name="rosbag_play" output="screen" args="-l --clock $(env PWD)/vanessa_lisa.bag -d 1"/>
+<node pkg="tf" type="static_transform_publisher" name="link1_broadcaster" args="0 0 0 0 0 1 0 base_link laser 100" />
+<node pkg="rviz" name="rviz" type="rviz" />
+</launch>

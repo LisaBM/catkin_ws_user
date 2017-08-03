@@ -1,0 +1,107 @@
+0 Grad:
+1. Messung:
+b in Meter: 0.89143454385
+m: -0.0567080934563
+
+2. Messung:
+b in Meter: 1.08976945094
+m: -0.252965866401
+
+
+
+10 Grad:
+1. Messung:
+b in Meter: 0.75
+m: 0.0
+2. Messung:
+b in Meter: 1.2133993179
+m: -0.357896556164
+
+
+
+20 Grad:
+1. Messung:
+b in Meter: 0.62802872173
+m: -0.0234924585495
+
+2. Messung:
+b in Meter: 1.23491360365
+m: -0.372628347529
+
+
+
+35 Grad:
+1. Messung:
+b in Meter: 0.595058553228
+m: -0.040175659683
+2. Messung:
+b in Meter: 1.1823300449
+m: -0.296428282796
+
+
+
+50 Grad:
+1. Messung:
+b in Meter: 0.429986950956
+m: -0.0487454781745
+
+2. Messung:
+b in Meter: 1.17639550025
+m: -0.221397485347
+
+
+
+70 Grad:
+1. Messung:
+b in Meter: 0.548720555926
+m: -0.0333419208802
+
+2. Messung:
+b in Meter: 1.2886599625
+m: 0.0655069282729
+
+
+
+85 Grad:
+1. Messung:
+b in Meter: 0.545284295379
+m: -0.0220328967858
+
+2. Messung:
+b in Meter: 1.38503655195
+m: 0.313326196466
+
+
+
+100 Grad:
+1. Messung:
+b in Meter: 0.72
+m: 0.0
+
+2. Messung:
+b in Meter: 1.41065204481
+m: 0.475911513887
+
+
+
+110 Grad:
+1. Messung:
+b in Meter: 0.738212280646
+m: -0.0196358022747
+
+2. Messung:
+b in Meter: 1.42436820805
+m: 0.528553199231
+
+
+
+120 Grad:
+1. Messung:
+b in Meter: 0.738286564827
+m: -0.0779481349802
+
+2. Messung:
+b in Meter: 1.40385971671
+m: 0.560467567661
+
+

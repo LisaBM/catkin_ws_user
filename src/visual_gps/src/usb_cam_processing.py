@@ -6,159 +6,281 @@ import sys
 import rospy
 import cv2
 import numpy as np
+from math import isnan, atan, cos, sin, pi
 from sklearn import linear_model
-from std_msgs.msg import String
+from std_msgs.msg import String, Float32
 from sensor_msgs.msg import Image
+from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Quaternion
 from cv_bridge import CvBridge, CvBridgeError
+import tf
 
 # from __future__ import print_function
 
-flag = 0
+xt_list = [[0]*2]*2
+sigmat_list = [[[0]*2]*2]*2 
+
 
 class image_converter:
   def __init__(self):
-    self.image_pub_s = rospy.Publisher("/image_processing/usb_cam_s", Image, queue_size=1)
+    self.image_pub = rospy.Publisher("/image_processing/usb_cam_s", Image, queue_size=1)
+    self.gps_pub = rospy.Publisher("/visual_gps/odom", Odometry, queue_size = 10)
 
     self.bridge = CvBridge()
-    self.image_sub = rospy.Subscriber("/usb_cam/image_raw",Image,self.callback, queue_size=1)
+    self.image_sub = rospy.Subscriber("/usb_cam/image_undistorted",Image,self.callback, queue_size=1)
+    self.yaw_sub = rospy.Subscriber("/model_car/yaw", Float32, self.yaw_callback, queue_size=1) 
+    #self.speed_sub = rospy.Subscriber("/model_car"
 
+  def yaw_callback(self, yaw):
+    self.yaw = yaw
 
   def callback(self,data):
-    global flag
     try:
       cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
     except CvBridgeError as e:
       print(e)
 
 
-#    #RGB
-    b,g,r = cv2.split(cv_image) 
-    b = np.array(b, dtype = float)
-    g = np.array(g, dtype = float)
-    r = np.array(r, dtype = float)
-    intensity_brg = b + g + r
-    intensity_brg = np.floor(intensity_brg/3)
-    intensity_brg = np.array(intensity_brg, dtype = np.uint8)
-
-    
-
-    ##bi_rgb
-    #bi_gray_max = 255
-    #bi_gray_min = 170
-
-    #_, rgb_binary = cv2.threshold(intensity_brg,
-                              #bi_gray_min,
-                              #bi_gray_max,
-                              #cv2.THRESH_BINARY)
-    
-    #HSV
-    hsv = cv2.cvtColor(cv_image,cv2.COLOR_BGR2HSV);
-    h,s,v = cv2.split(hsv)
-    s_blur = cv2.GaussianBlur(s,(5,5),0)
-
-    #bi_hsv
-    bi_s_max = 255
-    bi_s_min = 100
-    _, s_binary = cv2.threshold(s_blur,
-                              bi_s_min,
-                              bi_s_max,
-                              cv2.THRESH_BINARY);
-
-    starting_points = [[50,150], [50,300 ], [240, 150], [240, 300]]
-#    color_minb  = np.zeros(4)+255
-#    color_ming  = np.zeros(4)+255
-#    color_minr  = np.zeros(4)+255
-#    color_maxg  = np.zeros(4)
-#    color_maxb  = np.zeros(4)
-#    color_maxr  = np.zeros(4)
-
-    color_array = []
-    mean_array = np.zeros((4,3))
-    std_array = np.zeros((4, 3))
-    for k,spk in enumerate(starting_points):
-      color_array.append([])
-      for i in range(spk[0], spk[0]+100):
-        for j in range(spk[1], spk[1]+100):
-          if s_binary[i,j] == 255:
-            color_array[k].append([r[i,j], g[i,j], b[i,j]])
-            #color_minr[k] = min(color_minr[k], r[i,j])
-            #color_ming[k] = min(color_ming[k], r[i,j])
-            #color_minb[k] = min(color_minb[k], r[i,j])
-            #color_maxr[k] = max(color_maxr[k], r[i,j])
-            #color_maxg[k] = max(color_maxg[k], r[i,j])
-            #color_maxb[k] = max(color_maxb[k], r[i,j])
-      mean_array[k] = np.mean(color_array[k], axis = 0)
-      std_array[k] = np.std(color_array[k], axis = 0)
-    print(mean_array, std_array)
-
-#    print('red color range = ')
-#    print(color_minr, color_maxr)
-#    print('green color range = ')
-#    print(color_ming, color_maxg)
-#    print('blue color range = ')
-#    print(color_minb, color_maxb)
+    ### BUILD RGB ###
+    b,g,r = cv2.split(cv_image)
+    r_blur = cv2.GaussianBlur(r,(5,5),0)
+    g_blur = cv2.GaussianBlur(g,(5,5),0)
+    b_blur = cv2.GaussianBlur(b,(5,5),0)
 
 
-    ##YUV
-    #yuv = cv2.cvtColor(cv_image,cv2.COLOR_BGR2YUV);
-    #y,u,v = cv2.split(yuv)
 
+    #### BUILD HSV ###
+    #hsv = cv2.cvtColor(cv_image,cv2.COLOR_BGR2HSV);
+    #_,s,_ = cv2.split(hsv)
+    #s_blur = cv2.GaussianBlur(s,(5,5),0)
 
-    ##bi_yuv
-    #bi_yuv_max = 255
-
-    #bi_yuv_min = 200
-    #_, yuv_binary = cv2.threshold(y,
-                              #bi_yuv_min,
-                              #bi_yuv_max,
+    #### S BINARY
+    #bi_s_max = 255
+    #bi_s_min = 140
+    #_, s_binary = cv2.threshold(s_blur,
+                              #bi_s_min,
+                              #bi_s_max,
                               #cv2.THRESH_BINARY);
 
 
-    ##getting line equations from YUV
-    #xy1 = np.array([
-       #[i,j]
-       #for i in range(120,480)
-       #for j in range(120, 320)
-       #if yuv_binary[i,j] == 255
-       #])
-    #xy2 = np.array([
-       #[i,j]
-       #for i in range(120,480)
-       #for j in range(320, 500)
-       #if yuv_binary[i,j] == 255
-       #])
-    #x1 = xy1[:,0]
-    #x1 = np.reshape(x1, (np.shape(x1)[0], 1))
-    #y1 = xy1[:,1]
 
-    #x2 = xy2[:,0]
-    #x2 = np.reshape(x2, (x2.shape[0],1))
-    #y2 = xy2[:,1]
+    ### BUILD YUV ###
+    yuv = cv2.cvtColor(cv_image,cv2.COLOR_BGR2YUV);
+    y,u,v = cv2.split(yuv)
+    v_blur = cv2.GaussianBlur(v,(5,5),0)
 
-    #model_ransac1 = linear_model.RANSACRegressor(linear_model.LinearRegression())
-    #model_ransac1.fit(x1, y1)
-    #line1 = model_ransac1.predict([[120],[479]])
-    #model_ransac2 = linear_model.RANSACRegressor(linear_model.LinearRegression())
-    #model_ransac2.fit(x2, y2)
-    #line2 =  model_ransac2.predict([[120],[479]])
-    #print(line2)
 
-    #image = cv2.line(cv_image, tuple([int(line1[0]),120]), tuple([int(line1[1]), 479]), 1, thickness$
+    #Testen, in welchen Quadraten die Ballons sitzen ( im Testbag)
+    #hoehe = 70
+    #breite = 300
+    #image = cv2.line(s_binary, tuple([ 0, hoehe ]), tuple([479, hoehe]), (255,150,70),2)
+    #image = cv2.line(s_binary, tuple([ 0, hoehe + 50 ]), tuple([479, hoehe + 50]), (255,150,70),2)
+    #image = cv2.line(s_binary, tuple([  breite,0 ]), tuple([breite, 479]), (255,150,70),2)
+    #image = cv2.line(s_binary, tuple([  breite + 50 ,0]), tuple([breite+ 50, 479]), (255,150,70),2)
+
     #image = cv2.line(image, tuple([int(line2[0]), 120]), tuple([int(line2[1]), 479]), 1, thickness =$
 
 
 
-    try:
-      self.image_pub_s.publish(self.bridge.cv2_to_imgmsg(s_binary, "mono8"))
+
+
+    ### FINDING COLOR RANGES FOR THE DIFFERENT BALLOONS ###
+    #starting_points = [[210,70], [300,70 ], [210, 200], [300, 200]]
+
+
+    #color_array = [] # rot, lila, blau, gruen
+    ##Zeilen sind Farben:
+    #mean_array = np.zeros((4,4))
+    #std_array = np.zeros((4, 4))
+    #for k,spk in enumerate(starting_points):
+      #color_array.append([])
+      #for j in range(spk[0], spk[0]+50):
+        #for i in range(spk[1], spk[1]+50):
+          #if s_binary[i,j] == 255:
+            #color_array[k].append([r[i,j], g[i,j], b[i,j], v[i,j]])
+
+      #mean_array[k] = np.mean(color_array[k], axis = 0)
+      #std_array[k] = np.std(color_array[k], axis = 0)
+    #print(mean_array, std_array)
+
+    mean_array = np.array([
+        [ 110,   36,   51 ,  172],
+        [  60,   31,  175,  131 ],
+        [  24,   27,  184,  110],
+        [  19,   85,   32,   92]
+        ])
+    std_array = np.array([
+        [ 16,  11 ,  11,   6],
+        [ 38,  22,  76,   7],
+        [ 11,  11,  80,   8],
+        [  9,  24,  13,   9]
+        ])
 
 
 
-    except CvBridgeError as e:
-      print(e)
+    # define range of balloons in RGB
+    lower_rgb = np.array([[94, 25, 40], #r, g, b
+                         [22, 9 , 99],
+                         [13, 16, 104],
+                         [10, 61, 19]])
+    lower_rgb = np.fliplr(lower_rgb) # flip to b, g, r
+
+    upper_rgb = np.array([[126,47, 62], # r, g, b
+                         [98, 53, 251],
+                         [35, 38, 255],
+                         [28, 109, 45]])
+    upper_rgb = np.fliplr(upper_rgb) # flip to b, g, r
+
+    lower_v = np.array([[166],
+                       [124],
+                       [102],
+                       [83]])
+    upper_v = np.array([[178],
+                       [138],
+                       [118],
+                       [101]])
+
+    image = v
+    #images = {}
+    balloons_seen = [0]*4
+    balloon_pos_im = [0]*4
+    for k in range(4):
+        mask_rgb = cv2.inRange(cv_image, lower_rgb[k], upper_rgb[k])
+        mask_v   = cv2.inRange(v  , lower_v[k], upper_v[k])
+        just_balloon = cv2.bitwise_and(mask_rgb, mask_v)
+        #images[k] = cv2.bitwise_and(mask_rgb, mask_v)
+        indices = np.nonzero(just_balloon)
+        balloon_pos_im[k] = [ np.mean(indices[0]), np.mean(indices[1]) ]
+        if not isnan(balloon_pos_im[k][0]): # check, if balloon appeared in picture
+            balloons_seen[k] =1
+            image = cv2.circle(image, tuple([ int(balloon_pos_im[k][1]) ,int( balloon_pos_im[k][0]) ]), 3, (180, 70, 30), 2)
+        #print(balloon_pos_im[k])
+#    print(balloons_seen)
+#    print( 'gruener Ballon: ' + str(balloon_pos_im[3]))
+    ### Testen, ob Farberkennung funktioniert:
+    #max_length = [8, 40, 30, 10]
+    #binary = r
+    #balloon_pos_im = np.zeros((4,2))
+    #for k in range(4): #Ballon
+        #colored_points_k = []
+        #for i in range(480): # Zeile
+            #if len(colored_points_k) == max_length[k]:
+                #break
+            #for j in range(640): # Spalte
+                #binary[i,j]=0
+                #if len(colored_points_k) == max_length[k]:
+                    #break
+                #if mean_array[k][0] - std_array[k][0] <= r_blur[i,j] <= mean_array[k][0] + std_array[k][0]: # Rotwert
+                    #if mean_array[k][1] - std_array[k][1] <= g_blur[i,j] <= mean_array[k][1] + std_array[k][1]: #Gruenwert
+                        #if mean_array[k][2] - std_array[k][2] <= b_blur[i,j] <= mean_array[k][2] + std_array[k][2]: #Blauwert
+                            #if mean_array[k][3] - std_array[k][3] <= v_blur[i,j] <= mean_array[k][3] + std_array[k][3]: #V-Wert (von YUV)
+                                #binary[i,j] = 50+(k+1)*50
+                                #colored_points_k.append([i,j])
+        ##print('laenge von Liste, die zu Farbe k gehoert: ' + str(len(colored_points_k)))
+        #balloon_pos_im[k] = np.mean(np.array(colored_points_k), axis = 0)
+
+
+    balloon_pos_rw = [
+        [3.57, -3    ],
+        [2.33, -3    ],
+        [3.57, -1.15 ],
+        [2.33, -1.15 ]]
+
+    #centers of the four balloons
+    center_im = np.mean(
+        np.array([ balloon_pos_im[k] for k in range(4) if balloons_seen[k] ]),
+        axis=0
+        )
+    #image = cv2.circle(image, tuple([ int(center_im[1]) ,int( center_im[0])]), 3, (0,0,0), 2)
+#    print('center im ', center_im)
+    center_rw = np.mean(
+        np.array([ balloon_pos_rw[k] for k in range(4) if balloons_seen[k] ]),
+        axis=0)
+#    print('center  rw ', center_rw)
+
+#    image = cv2.line(v, tuple([ balloon_pos_im[0][1] , balloon_pos_im[0][0] ]), tuple([ balloon_pos_im[1][1] , balloon_pos_im[1][0] ]), (255,150,70), 2)
+#    image = cv2.line(image, tuple([ balloon_pos_im[2][1] , balloon_pos_im[2][0] ]), tuple([ balloon_pos_im[3][1] , balloon_pos_im[3][0] ]), (255,150,70), 2)
+
+    # calculate rotation matrix
+    scaling = []
+    rotation_angle = []
+
+    for k in range(4):
+        if balloons_seen[k]:
+            scaling.append( np.sqrt(  ((balloon_pos_rw[k][0]-center_rw[0])**2+( balloon_pos_rw[k][1]-center_rw[1] )**2) / float(((balloon_pos_im[k][0]-center_im[0])**2+( balloon_pos_im[k][1]-center_im[1] )**2)) ) )
+
+            atan1 = atan( (balloon_pos_rw[k][1] - center_rw[1] )/ (balloon_pos_rw[k][0] - center_rw[0]) )
+            if balloon_pos_rw[k][0] - center_rw[0] <0:
+                atan1 += pi
+            atan2 = atan( (balloon_pos_im[k][1] - center_im[1])/ (balloon_pos_im[k][0] - center_im[0]) )
+            if balloon_pos_im[k][0] - center_im[0] <0:
+                atan2 += pi
+
+            #modulo 2*pi:
+            rotation_angle.append( atan1 - atan2 )
+            if rotation_angle[-1] > 2*pi:
+                rotation_angle[-1] -= 2*pi
+            if rotation_angle[-1] < 0:
+                rotation_angle[-1] += 2*pi
+
+    print(balloons_seen)
+    scaling_mean = np.mean( scaling)
+    rotation_angle_mean = np.mean( rotation_angle, axis = 0 )
+#    print( 'angle: ' + str(rotation_angle))
+#    print( 'scaling: ' + str(scaling_mean))
+
+    R = scaling_mean * np.array([
+        [cos(rotation_angle_mean), -sin(rotation_angle_mean)],
+        [sin(rotation_angle_mean),  cos(rotation_angle_mean)]
+        ])
+
+    current_pos_im = [226, 317]
+    current_pos_rw = np.dot(R, current_pos_im - center_im) + center_rw
+
+    
+    #### Kalman-Filter ###
+    #global sigmat_list
+    #global xt_list
+    #var_measurement = np.array([[0.19, 0], [0,0.46]])
+    #sigmat_list[0] = sigmat_list[1]
+    #xt_list[0] = xt_list[1] # das ist nun x_{t-1}, also x_t aus dem vorherigen Schritt
+   
+
+    ##Forecast
+    #x_bar = np.dot(P, xt_list[0]) + vel * np.array([ cos(yaw) , sin(yaw)])
+
+
+    #try:
+      #self.image_pub.publish(self.bridge.cv2_to_imgmsg(image, "mono8"))
+
+    #except CvBridgeError as e:
+      #print(e)
+      
 #    if flag == 0:
 #      with open("lane_picture", "w") as f:
 #        pickle.dump((rgb_binary, hsv_binary, yuv_binary), f)
 #        flag = 1
+
+    odom = Odometry()
+    odom.pose.pose.position.x = current_pos_rw[0]
+    odom.pose.pose.position.y = current_pos_rw[1]
+
+    [x,y] = np.dot( R, np.array([-1, 0]) )
+    if x  == 0:
+        alpha = pi * np.sign( y )
+    else:
+        alpha = atan( y / float(x) )
+    if x <0:
+        alpha += pi
+    # modulo 2*pi:
+    if alpha > 2*pi:
+        alpha -= 2*pi
+    if alpha  < 0:
+        alpha += 2*pi
+    print(alpha)
+    #odom.pose.pose.orientation = Quaternion( *tf.transformations.quaternion_from_euler(0, 0, alpha) )
+    odom.pose.pose.orientation = Quaternion([ alpha, 0,0,0])
+    self.gps_pub.publish( odom )
 
 def main(args):
   rospy.init_node('image_converter', anonymous=True)

@@ -156,7 +156,7 @@ class image_converter:
             image = cv2.circle(image, tuple([ int(balloon_pos_im[k][1]) ,int( balloon_pos_im[k][0]) ]), 3, (180, 70, 30), 2)
         #print(balloon_pos_im[k])
 #    print(balloons_seen)
-#    print( 'gruener Ballon: ' + str(balloon_pos_im[3]))
+    print( 'gruener Ballon: ' + str(balloon_pos_im[3]))
     ### Testen, ob Farberkennung funktioniert:
     #max_length = [8, 40, 30, 10]
     #binary = r
@@ -234,7 +234,7 @@ class image_converter:
         [sin(rotation_angle_mean),  cos(rotation_angle_mean)]
         ])
 
-    current_pos_im = [226, 317]
+    current_pos_im = [230, 316]
     current_pos_rw = np.dot(R, current_pos_im - center_im) + center_rw
 
     
